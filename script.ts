@@ -28,11 +28,11 @@ const quizOptions = document.getElementById("quizOptions") as HTMLInputElement
 const quizAnswer = document.getElementById("quizAnswer") as HTMLDivElement
 const score = document.getElementById("score") as HTMLSpanElement
 const restartBtn = document.getElementById("restartBtn") as HTMLButtonElement
-const submitAnswer = document.getElementById("submitAnswer") as HTMLButtonElement 
+const submitAnswer = document.getElementById("submitAnswer") as HTMLButtonElement
 
 
 let index = 0, scr = 0;
-let selectedOption: string | null = null;
+let selectedOption: string | null = null; //?
 
 
 // quizQuestion
@@ -44,6 +44,30 @@ let selectedOption: string | null = null;
 const quizInstructions = document.getElementById("quizInstructions");
 quizInstructions?.focus(); // Focus on instructions first
 
+//1 NEW keyboard navigation
+function enableKeyboardNavigation(): void {
+  const radioButtons = quizOptions.querySelectorAll<HTMLInputElement>("input[type='radio']");
+
+  radioButtons.forEach((radio, index) => {
+    radio.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+        event.preventDefault();
+        const next = radioButtons[index + 1] || radioButtons[0]; // Loop to first if at end
+        next.focus();
+      } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+        event.preventDefault();
+        const prev = radioButtons[index - 1] || radioButtons[radioButtons.length - 1]; // Loop to last if at start
+        prev.focus();
+      } else if (event.key === "Enter" || event.key === " ") {
+        // Select answer with Enter or Space
+        event.preventDefault();
+        radio.checked = true; // Mark it as selected
+        selectedOption = radio.value.replace(/^\d+\.\s*/, ""); // Remove number prefix (e.g., "1. ")
+        console.log("Selected:", selectedOption);
+      }
+    });
+  });
+}
 
 
 function loadQuestion(): void {
@@ -55,16 +79,16 @@ function loadQuestion(): void {
   if (quizQuestion) quizQuestion.textContent = getQ.ask;
   if (quizOptions) quizOptions.innerHTML = ""; // Clear previous options 
 
- let selectedOption: string | null = null;
+  let selectedOption: string | null = null;
 
-  getQ.choose.forEach((element, i )=> {
-    const btn = document.createElement("input");
+  getQ.choose.forEach((element, i) => {
+    const btn = document.createElement("input"); // shouldn't be const radio (not btn) ?
     btn.type = "radio";
     btn.name = "aria";
     btn.id = `aria-${i}`; // Unique ID for accessibility
     btn.value = `${i + 1}. ${element}`;
 
-   btn.onclick = () => {
+    btn.onclick = () => {
       selectedOption = element;
       console.log("Selected:", selectedOption);
     };
@@ -72,49 +96,72 @@ function loadQuestion(): void {
     const label = document.createElement("label");
     //label.hidden = true;
     label.htmlFor = btn.id;
-    
 
-  label.appendChild(btn);
-  label.append(` ${element}`)
 
-    submitAnswer.onclick = (event) => {
+    label.appendChild(btn);
+    label.append(` ${element}`)
 
-    event.preventDefault(); //Stops form submission from refreshing the page
-
-    if (selectedOption !== null) {
-      checkA(selectedOption);
-    } else {
-      console.log("No option selected!");
-    }
-  };
-    // Append elements
-   
     quizOptions?.appendChild(label);
   });
+
+
+  //2 NEW Move focus to first answer option for better keyboard usability
+  const firstOption = quizOptions.querySelector("input[type='radio']") as HTMLInputElement;
+  firstOption?.focus();
+
+  //3 NEW **Enable keyboard navigation after adding elements**
+  enableKeyboardNavigation();
 }
+// Append elements
+
+
+
+//4 took it out of function loadQuestion
+submitAnswer.onclick = (event) => {
+
+  event.preventDefault(); //Stops form submission from refreshing the page
+
+  if (selectedOption !== null) {
+    checkA(selectedOption);
+  } else {
+    console.log("No option selected!");
+  }
+}
+
+
+
+
+
 
 
 
 function checkA(opt: string): void {
 
-    if (opt === quiz[index].answer) {
-      scr++;
+  if (opt === quiz[index].answer) {
+    scr++;
     index++;
     loadQuestion();
   } else {
     console.log("incorrect answer")
     submitAnswer?.style.setProperty('display', 'none'); //Remove submit when the answer is incorrect
 
-    quizCard.innerHTML =`
-    <h3>Oh no wrong answer</H3>
-    <button id=retryBtn>Click to Retry</button>
+    quizCard.innerHTML = `
+    <h3>Oh no wrong answer</h3>
+    <button id="retryBtn">Click to Retry</button>
     `;
 
-    
-    loadQuestion()
+    //5 Retry button
+    const retryBtn = document.getElementById("retryBtn") as HTMLButtonElement;
+    retryBtn.focus(); // Move focus to retry button
+
+    retryBtn.onclick = () => {
+
+      loadQuestion()
+
+    };
 
   }
-   
+
 }
 
 // Function to retry the same question
@@ -141,7 +188,7 @@ function checkA(opt: string): void {
 //     const label = document.createElement("label");
 //     //label.hidden = true;
 //     label.htmlFor = btn.id;
-    
+
 
 //   label.appendChild(btn);
 //   label.append(` ${element}`)
@@ -157,7 +204,7 @@ function checkA(opt: string): void {
 //     }
 //   };
 //     // Append elements
-   
+
 //     quizOptions?.appendChild(label);
 //   });
 
@@ -172,7 +219,29 @@ function endQ(): void {
   if (score) score.textContent = scr.toString();
   restartBtn?.style.setProperty('display', 'block');
   submitAnswer.style.setProperty('display', 'none');
+
+  //6 NEW Move focus to final score
+  quizAnswer?.focus();
 }
+
+//7 NEW Focus trap inside the quiz card
+quizCard.addEventListener("keydown", function (event: KeyboardEvent) {
+  const focusableElements = quizCard.querySelectorAll<HTMLElement>("input, button");
+  if (focusableElements.length === 0) return;
+
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+
+  if (event.key === "Tab") {
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  }
+});
 
 console.log(loadQuestion)
 
