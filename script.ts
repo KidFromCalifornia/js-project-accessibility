@@ -44,30 +44,6 @@ let selectedOption: string | null = null; //?
 const quizInstructions = document.getElementById("quizInstructions");
 quizInstructions?.focus(); // Focus on instructions first
 
-//1 NEW keyboard navigation
-function enableKeyboardNavigation(): void {
-  const radioButtons = quizOptions.querySelectorAll<HTMLInputElement>("input[type='radio']");
-
-  radioButtons.forEach((radio, index) => {
-    radio.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-        event.preventDefault();
-        const next = radioButtons[index + 1] || radioButtons[0]; // Loop to first if at end
-        next.focus();
-      } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-        event.preventDefault();
-        const prev = radioButtons[index - 1] || radioButtons[radioButtons.length - 1]; // Loop to last if at start
-        prev.focus();
-      } else if (event.key === "Enter" || event.key === " ") {
-        // Select answer with Enter or Space
-        event.preventDefault();
-        radio.checked = true; // Mark it as selected
-        selectedOption = radio.value.replace(/^\d+\.\s*/, ""); // Remove number prefix (e.g., "1. ")
-        console.log("Selected:", selectedOption);
-      }
-    });
-  });
-}
 
 
 function loadQuestion(): void {
@@ -104,35 +80,16 @@ function loadQuestion(): void {
     quizOptions?.appendChild(label);
   });
 
-
-  //2 NEW Move focus to first answer option for better keyboard usability
+  // Move focus to first option
   const firstOption = quizOptions.querySelector("input[type='radio']") as HTMLInputElement;
   firstOption?.focus();
 
-  //3 NEW **Enable keyboard navigation after adding elements**
+  // Enable keyboard navigation inside quiz
   enableKeyboardNavigation();
+
+  // Ensure focus trapping works after question loads
+  trapFocusInsideQuiz();
 }
-// Append elements
-
-
-
-//4 took it out of function loadQuestion
-submitAnswer.onclick = (event) => {
-
-  event.preventDefault(); //Stops form submission from refreshing the page
-
-  if (selectedOption !== null) {
-    checkA(selectedOption);
-  } else {
-    console.log("No option selected!");
-  }
-}
-
-
-
-
-
-
 
 
 function checkA(opt: string): void {
@@ -163,6 +120,121 @@ function checkA(opt: string): void {
   }
 
 }
+
+//1 NEW keyboard navigation
+function enableKeyboardNavigation(): void {
+  const radioButtons = quizOptions.querySelectorAll<HTMLInputElement>("input[type='radio']");
+
+  radioButtons.forEach((radio, index) => {
+    radio.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+        event.preventDefault();
+        const next = radioButtons[index + 1] || radioButtons[0]; // Loop to first if at end
+        next.focus();
+      } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+        event.preventDefault();
+        const prev = radioButtons[index - 1] || radioButtons[radioButtons.length - 1]; // Loop to last if at start
+        prev.focus();
+      } else if (event.key === " " || event.key === "Enter") {
+        // Select answer with Space or Enter
+        event.preventDefault();
+        radio.checked = true; // Mark it as selected
+        selectedOption = radio.value.replace(/^\d+\.\s*/, ""); // Remove number prefix (e.g., "1. ")
+        console.log("Selected:", selectedOption);
+
+        // Move focus to submit button
+        submitAnswer.focus();
+      } else if (event.key === "Tab") {
+        event.preventDefault();
+        const next = radioButtons[index + 1] || submitAnswer;
+        next.focus();
+      }
+    }
+    });
+};
+
+// Allow "Enter" to submit when submit button is focused
+submitAnswer.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    if (selectedOption !== null) {
+      checkA(selectedOption);
+    } else {
+      console.log("No option selected!");
+    }
+  }
+});
+
+
+// Prevent pressing "Enter" from triggering submission when question is focused
+quizQuestion?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault(); // Stop it from being processed
+  }
+});
+// Prevent pressing "Enter" from triggering submission when question is focused
+quizQuestion?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault(); // Stop it from being processed
+  }
+});
+
+//7 NEW Focus trap inside the quiz card
+function trapFocusInsideQuiz() {
+  const focusableElements = quizCard.querySelectorAll<HTMLElement>("input[type='radio'], button");
+
+  if (focusableElements.length === 0) return;
+
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+
+  quizCard.addEventListener("keydown", (event: KeyboardEvent) => {
+    if (event.key === "Tab") {
+      if (event.shiftKey && document.activeElement === firstElement) {
+        // Shift + Tab: Move focus back to the last element
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        // Tab: Move focus to the first element
+        event.preventDefault();
+        firstElement.focus();
+      }
+    }
+  });
+}
+
+
+//2 NEW Move focus to first answer option for better keyboard usability
+const firstOption = quizOptions.querySelector("input[type='radio']") as HTMLInputElement;
+firstOption?.focus();
+
+//3 NEW **Enable keyboard navigation after adding elements**
+enableKeyboardNavigation();
+
+// Append elements
+
+
+
+//4 took it out of function loadQuestion
+submitAnswer.onclick = (event) => {
+
+  event.preventDefault(); //Stops form submission from refreshing the page
+
+  if (selectedOption !== null) {
+    checkA(selectedOption);
+  } else {
+    console.log("No option selected!");
+  }
+}
+
+
+
+
+
+
+
+
+
 
 // Function to retry the same question
 // function retryQuestion(question: quizData): void {
@@ -224,24 +296,6 @@ function endQ(): void {
   quizAnswer?.focus();
 }
 
-//7 NEW Focus trap inside the quiz card
-quizCard.addEventListener("keydown", function (event: KeyboardEvent) {
-  const focusableElements = quizCard.querySelectorAll<HTMLElement>("input, button");
-  if (focusableElements.length === 0) return;
-
-  const firstElement = focusableElements[0];
-  const lastElement = focusableElements[focusableElements.length - 1];
-
-  if (event.key === "Tab") {
-    if (event.shiftKey && document.activeElement === firstElement) {
-      event.preventDefault();
-      lastElement.focus();
-    } else if (!event.shiftKey && document.activeElement === lastElement) {
-      event.preventDefault();
-      firstElement.focus();
-    }
-  }
-});
 
 console.log(loadQuestion)
 
